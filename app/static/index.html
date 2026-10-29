@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanopi Lens</title>
+<meta name="description" content="Objective variegation and health grading for rare aroids, built with Meta SAM 3.1 and Muse Spark.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f1ea;
+  --surface: #fffdf8;
+  --surface-2: #ece8dd;
+  --fg: #1f2a22;
+  --muted: #5d6a60;
+  --line: #ddd7c8;
+  --accent: #2f6b45;
+  --accent-fg: #ffffff;
+  --accent-soft: #dcebdf;
+  --warn: #b8860b;
+  --warn-soft: #f5ebcf;
+  --danger: #b4452f;
+  --danger-soft: #f6ddd6;
+  --shadow: 0 1px 2px rgba(31, 42, 34, .06), 0 8px 24px rgba(31, 42, 34, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121713;
+    --surface: #1a211c;
+    --surface-2: #232c25;
+    --fg: #e7ede8;
+    --muted: #9aa99e;
+    --line: #2e3a31;
+    --accent: #7fc796;
+    --accent-fg: #0f1a12;
+    --accent-soft: #23382a;
+    --warn: #e2b84e;
+    --warn-soft: #3a3220;
+    --danger: #ec8a74;
+    --danger-soft: #3d2520;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+  }
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+header { padding: 20px 0; }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: Fraunces, Georgia, serif; font-size: 1.35rem; font-weight: 600; }
+.brand svg { width: 28px; height: 28px; color: var(--accent); }
+.pill { font-size: .78rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.hero { padding: 28px 0 24px; max-width: 680px; }
+h1 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.01em; }
+.hero p { color: var(--muted); font-size: 1.08rem; margin: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+#upload { padding: 20px; display: grid; gap: 16px; }
+.drop {
+  display: grid; place-items: center; text-align: center; gap: 6px;
+  min-height: 220px; padding: 24px; border: 2px dashed var(--line); border-radius: 14px;
+  background: var(--surface-2); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+#dropEmpty { display: grid; justify-items: center; gap: 6px; }
+.drop strong { font-weight: 600; }
+.drop span { color: var(--muted); font-size: .9rem; }
+.drop img, .drop video { max-height: 320px; max-width: 100%; border-radius: 10px; display: block; }
+.drop svg { width: 40px; height: 40px; color: var(--accent); }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+input[type=text] {
+  flex: 1 1 260px; font: inherit; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0;
+}
+input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+button, .btn {
+  font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 12px 20px; cursor: pointer;
+  background: var(--accent); color: var(--accent-fg); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost, button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.error { color: var(--danger); background: var(--danger-soft); border-radius: 10px; padding: 10px 14px; font-size: .92rem; }
+#loading { padding: 48px 20px; text-align: center; }
+.spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); margin: 0 auto 16px; animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading p { margin: 0; color: var(--muted); }
+#result { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; }
+#result > .card { align-self: start; }
+figure { margin: 0; padding: 12px; }
+figure img, figure video { width: 100%; border-radius: 12px; display: block; background: #000; }
+.toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
+.toggle button { background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 8px; font-size: .88rem; }
+.toggle button.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+.panel { display: grid; gap: 16px; align-content: start; }
+.section { padding: 18px 20px; }
+.label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
+.big { font-family: Fraunces, Georgia, serif; font-size: 3rem; line-height: 1; font-weight: 600; }
+.big small { font-size: 1.2rem; color: var(--muted); font-family: Inter, sans-serif; font-weight: 500; margin-left: 4px; }
+.stat { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.badge { font-size: .82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.sub { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+.leaves { display: grid; gap: 8px; margin-top: 14px; }
+.leaf { display: grid; grid-template-columns: 36px 1fr 48px; align-items: center; gap: 10px; font-size: .88rem; }
+.leaf .bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.leaf .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.leaf b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.leaf span { color: var(--muted); }
+.issues { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.issue { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.issue .top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.issue .name { font-weight: 600; }
+.issue p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+.sev { font-size: .74rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.sev.low { background: var(--accent-soft); color: var(--accent); }
+.sev.medium { background: var(--warn-soft); color: var(--warn); }
+.sev.high { background: var(--danger-soft); color: var(--danger); }
+.note { color: var(--muted); font-size: .9rem; margin: 8px 0 0; }
+select {
+  flex: 1 1 140px; font: inherit; color: var(--fg); background: var(--surface); min-width: 0;
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+}
+.care { margin: 14px 0 0; display: grid; gap: 10px; }
+.care dt { font-weight: 600; font-size: .88rem; }
+.care dd { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+.care ul { margin: 4px 0 0; padding-left: 18px; }
+#careError, #arrivalError { margin-top: 10px; }
+.verdict { display: inline-block; font-weight: 600; font-size: .92rem; padding: 5px 12px; border-radius: 999px; }
+.verdict.consistent { background: var(--accent-soft); color: var(--accent); }
+.verdict.minor_changes { background: var(--warn-soft); color: var(--warn); }
+.verdict.significant_changes { background: var(--danger-soft); color: var(--danger); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.pair figure { padding: 0; }
+.pair img { border-radius: 10px; aspect-ratio: 4 / 3; object-fit: cover; }
+.pair figcaption { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+.delta { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.delta th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 0; }
+.delta td { text-align: right; padding: 6px 0; border-top: 1px solid var(--line); }
+.delta td:first-child { text-align: left; color: var(--muted); }
+.delta .worse { color: var(--danger); font-weight: 600; }
+.findings { margin: 10px 0 0; padding-left: 18px; font-size: .92rem; display: grid; gap: 6px; }
+label.btn { cursor: pointer; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.disclaimer { color: var(--muted); font-size: .8rem; grid-column: 1 / -1; margin: 0; }
+footer { color: var(--muted); font-size: .85rem; padding: 40px 0 32px; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  #result { grid-template-columns: 1fr; }
+  .big { font-size: 2.4rem; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 21c-4.5-2-7-6-7-10.5C5 6 8 3 12 3s7 3 7 7.5C19 15 16.5 19 12 21z"/>
+        <path d="M12 21V9M12 13l-3-2.5M12 16l3.2-2.8"/>
+      </svg>
+      Kanopi Lens
+    </div>
+    <div class="pill">Built with Meta SAM 3.1 · Muse Spark</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Grade a rare plant in seconds.</h1>
+    <p>Upload a photo or a short video of an aroid. Kanopi Lens isolates every leaf, measures variegation pixel by pixel, and checks for pests and disease, then gives you a Grading Card buyers can trust, plus an Arrival Check when the plant is delivered.</p>
+  </section>
+
+  <section id="upload" class="card">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="image/*,video/mp4,video/quicktime" hidden>
+      <div id="dropEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14"/>
+          <rect x="3" y="4" width="18" height="16" rx="3"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+        </svg>
+        <strong>Drop a plant photo or a short video, or tap to choose</strong>
+        <span>Video = Proof of Plant: walk slowly around the plant for 10–15 s</span>
+      </div>
+      <img id="preview" alt="Selected plant photo" hidden>
+      <video id="previewVideo" muted autoplay loop playsinline hidden></video>
+    </label>
+    <div class="row">
+      <input type="text" id="species" placeholder="Species (optional), e.g. Monstera 'Thai Constellation'" maxlength="120">
+      <button id="scan" disabled>Scan plant</button>
+    </div>
+    <div class="error" id="error" hidden></div>
+  </section>
+
+  <section id="loading" class="card" hidden>
+    <div class="spinner"></div>
+    <p id="step">Segmenting leaves…</p>
+    <p class="note" id="stepNote" hidden>Video scans take about 1–3 minutes while SAM 3.1 tracks every leaf. Keep this tab open.</p>
+  </section>
+
+  <section id="result" hidden>
+    <div class="card">
+      <figure>
+        <div class="toggle" role="tablist">
+          <button class="on" data-view="overlay">Leaves</button>
+          <button data-view="image">Original</button>
+          <button data-view="video" id="videoTab" hidden>Video</button>
+        </div>
+        <img id="resultImg" alt="Plant with each segmented leaf outlined and labelled">
+        <video id="resultVideo" controls muted playsinline hidden></video>
+      </figure>
+    </div>
+
+    <div class="panel">
+      <div class="card section" id="arrivalResult" hidden>
+        <p class="label">Arrival Check</p>
+        <span class="verdict" id="verdict"></span>
+        <p class="sub" id="arrivalMeta"></p>
+        <div class="pair">
+          <figure><img id="beforeImg" alt="Seller photo before shipping"><figcaption>Before shipping</figcaption></figure>
+          <figure><img id="afterImg" alt="Buyer photo on arrival"><figcaption>On arrival</figcaption></figure>
+        </div>
+        <table class="delta" id="deltaTable"></table>
+        <p class="note" id="visualSummary"></p>
+        <ul class="findings" id="findings"></ul>
+      </div>
+
+      <div class="card section" id="proof" hidden>
+        <p class="label">Proof of Plant</p>
+        <div class="stat">
+          <div class="big" id="proofLeaves">–</div>
+          <span class="badge" id="proofTracking"></span>
+        </div>
+        <div class="sub" id="proofMeta"></div>
+      </div>
+
+      <div class="card section">
+        <p class="label">Variegation</p>
+        <div class="stat">
+          <div class="big" id="varPct">–</div>
+          <span class="badge" id="varGrade"></span>
+        </div>
+        <div class="sub" id="varSub"></div>
+        <div class="leaves" id="leaves"></div>
+      </div>
+
+      <div class="card section">
+        <p class="label">Health</p>
+        <div class="stat">
+          <div class="big" id="healthScore">–</div>
+        </div>
+        <ul class="issues" id="issues"></ul>
+        <p class="note" id="healthNote"></p>
+      </div>
+
+      <div class="card section">
+        <p class="label">Care guide for the buyer</p>
+        <div class="row">
+          <select id="careLang" aria-label="Language"></select>
+          <select id="careCountry" aria-label="Buyer country"></select>
+          <button class="ghost" id="careBtn">Get guide</button>
+        </div>
+        <div class="error" id="careError" hidden></div>
+        <dl class="care" id="care" hidden></dl>
+      </div>
+
+      <div class="card section" id="arrivalUpload">
+        <p class="label">Arrival Check</p>
+        <p class="note">Plant delivered? The buyer uploads a photo or video on arrival and Kanopi Lens compares it with this scan: leaf count, variegation, health and shipping damage.</p>
+        <div class="row" style="margin-top:12px">
+          <label class="btn ghost" for="arrivalFile">Upload arrival photo or video</label>
+          <input type="file" id="arrivalFile" accept="image/*,video/mp4,video/quicktime" hidden>
+        </div>
+        <div class="error" id="arrivalError" hidden></div>
+      </div>
+
+      <div class="actions">
+        <a class="btn" id="cardLink" target="_blank" rel="noopener">Open Grading Card</a>
+        <button class="ghost" id="copy">Copy link</button>
+        <button class="ghost" id="again">Scan another</button>
+      </div>
+    </div>
+
+    <p class="disclaimer" id="disclaimer"></p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Kanopi Lens · objective grading for the rare plant trade</div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const GRADES = { none: "No variegation", low: "Low", medium: "Medium", high: "High", very_high: "Very high" };
+const STEPS = ["Segmenting leaves…", "Measuring variegation…", "Checking plant health…", "Preparing Grading Card…"];
+const MAX_SIDE = 2048;
+
+let photo = null;
+let scan = null;
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => (k === "class" ? (node.className = v) : node.setAttribute(k, v)));
+  children.forEach((c) => node.append(c));
+  return node;
+}
+
+function showError(message) {
+  $("error").textContent = message;
+  $("error").hidden = !message;
+}
+
+// Re-encode in the browser: shrinks phone photos and converts HEIC (Safari) to JPEG.
+function toJpeg(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("encode"))), "image/jpeg", 0.9);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
+    img.src = url;
+  });
+}
+
+const MAX_VIDEO_MB = 150;
+const isVideo = (file) => file.type.startsWith("video/");
+
+// Photos are re-encoded to JPEG in the browser; videos are sent as recorded so their hash stays verifiable.
+async function prepareMedia(file) {
+  if (!isVideo(file)) return toJpeg(file).catch(() => { throw new Error("This photo could not be read. Try a JPEG or PNG."); });
+  if (!["video/mp4", "video/quicktime"].includes(file.type)) throw new Error("Use an MP4 or MOV video.");
+  if (file.size > MAX_VIDEO_MB * 1024 * 1024) throw new Error(`Video is larger than ${MAX_VIDEO_MB} MB. Record 10–15 s.`);
+  return file;
+}
+
+async function selectFile(file) {
+  if (!file) return;
+  showError("");
+  try {
+    photo = await prepareMedia(file);
+  } catch (err) {
+    photo = null;
+    showError(err.message);
+    $("scan").disabled = true;
+    return;
+  }
+  const video = isVideo(photo);
+  $(video ? "previewVideo" : "preview").src = URL.createObjectURL(photo);
+  $("preview").hidden = video;
+  $("previewVideo").hidden = !video;
+  $("dropEmpty").hidden = true;
+  $("scan").disabled = false;
+}
+
+$("file").addEventListener("change", (e) => selectFile(e.target.files[0]));
+const drop = $("drop");
+["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => selectFile(e.dataTransfer.files[0]));
+
+const ARRIVAL_STEPS = ["Scanning the arrival photo…", "Comparing with the seller's scan…", "Checking for shipping damage…"];
+
+// Videos (often 4K, far above Cloud Run's 32 MB request limit) go straight to Cloud Storage.
+async function directUpload(blob, onProgress) {
+  const res = await fetch("/demo/uploads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content_type: blob.type, size: blob.size }),
+  });
+  const ticket = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(ticket.detail || `Upload failed (${res.status})`);
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", ticket.upload_url);
+    Object.entries(ticket.headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`)));
+    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
+    xhr.send(blob);
+  });
+  return ticket.upload_id;
+}
+
+async function runScan(url, blob, fields, steps, onError) {
+  $("loading").hidden = false;
+  const slow = isVideo(blob);
+  $("stepNote").hidden = !slow;
+  let timer;
+
+  try {
+    const form = new FormData();
+    if (slow) {
+      $("step").textContent = "Uploading video… 0%";
+      const uploadId = await directUpload(blob, (p) => ($("step").textContent = `Uploading video… ${Math.round(p * 100)}%`));
+      form.append("upload_id", uploadId);
+    } else {
+      form.append("image", blob, "plant.jpg");
+    }
+    Object.entries(fields).forEach(([k, v]) => v && form.append(k, v));
+    let i = 0;
+    $("step").textContent = steps[0];
+    timer = setInterval(() => { i = Math.min(i + 1, steps.length - 1); $("step").textContent = steps[i]; }, slow ? 30000 : 1800);
+
+    const res = await fetch(url, { method: "POST", body: form });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || `Scan failed (${res.status})`);
+    scan = body;
+    history.replaceState(null, "", `?scan=${scan.id}`);
+    render(scan);
+  } catch (err) {
+    onError(err.message);
+  } finally {
+    clearInterval(timer);
+    $("loading").hidden = true;
+  }
+}
+
+const VIDEO_STEPS = ["Tracking every leaf across frames…", "Measuring variegation on each leaf…", "Checking plant health…", "Preparing Grading Card…"];
+
+$("scan").addEventListener("click", () => {
+  if (!photo) return;
+  showError("");
+  $("upload").hidden = true;
+  runScan("/demo/scans", photo, { species_hint: $("species").value.trim() }, isVideo(photo) ? VIDEO_STEPS : STEPS, (message) => {
+    $("upload").hidden = false;
+    showError(message);
+  });
+});
+
+$("arrivalFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  $("arrivalError").hidden = true;
+  let blob;
+  try {
+    blob = await prepareMedia(file);
+  } catch (err) {
+    $("arrivalError").textContent = err.message;
+    $("arrivalError").hidden = false;
+    return;
+  }
+  const baselineId = scan.id;
+  $("result").hidden = true;
+  runScan(`/demo/scans/${baselineId}/arrival`, blob, {}, ARRIVAL_STEPS, (message) => {
+    $("result").hidden = false;
+    $("arrivalError").textContent = message;
+    $("arrivalError").hidden = false;
+  });
+});
+
+function setView(view) {
+  document.querySelectorAll(".toggle button").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+  const video = view === "video";
+  $("resultImg").hidden = video;
+  $("resultVideo").hidden = !video;
+  if (video) {
+    if (!$("resultVideo").src.endsWith(`/v1/scans/${scan.id}/video`)) $("resultVideo").src = `/v1/scans/${scan.id}/video`;
+  } else {
+    $("resultVideo").pause();
+    $("resultImg").src = `/v1/scans/${scan.id}/${view}.jpg`;
+  }
+}
+document.querySelectorAll(".toggle button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+function render(s) {
+  setView("overlay");
+
+  const v = s.variegation;
+  $("varPct").replaceChildren(v ? `${v.weighted_pct.toFixed(1)}` : "–", ...(v ? [el("small", {}, "%")] : []));
+  $("varGrade").textContent = v ? GRADES[v.grade] : "";
+  $("varGrade").hidden = !v;
+  $("varSub").textContent = v
+    ? `${s.leaves.length} leaves · range ${v.min_pct.toFixed(0)}–${v.max_pct.toFixed(0)}% · weighted by leaf area`
+    : "No leaves detected. Try a closer photo on a plain background.";
+  $("leaves").replaceChildren(...s.leaves.map((leaf) =>
+    el("div", { class: "leaf" },
+      el("span", {}, `#${leaf.index}`),
+      el("div", { class: "bar" }, el("i", { style: `width:${Math.min(leaf.variegation_pct, 100)}%` })),
+      el("b", {}, `${leaf.variegation_pct.toFixed(1)}%`))));
+
+  const h = s.health;
+  $("healthScore").replaceChildren(h.score === null ? "–" : `${h.score}`, ...(h.score === null ? [] : [el("small", {}, "/100")]));
+  $("issues").replaceChildren(...h.issues.map((issue) =>
+    el("li", { class: "issue" },
+      el("div", { class: "top" },
+        el("span", { class: "name" }, issue.name + (issue.leaf_index !== null ? ` · leaf #${issue.leaf_index}` : "")),
+        el("span", { class: `sev ${issue.severity}` }, `${issue.severity} · ${Math.round(issue.confidence * 100)}%`)),
+      el("p", {}, issue.recommendation))));
+  $("healthNote").textContent = h.score === null
+    ? "Health scan is not connected in this environment."
+    : (h.notes || (h.issues.length ? "" : "No visible issues."));
+
+  renderArrival(s);
+  renderProof(s);
+  $("care").hidden = true;
+  $("careError").hidden = true;
+  $("cardLink").href = `/v1/scans/${s.id}/card`;
+  $("disclaimer").textContent = s.disclaimer;
+  $("result").hidden = false;
+  if (!sharedId) $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+const VERDICTS = { consistent: "Consistent with seller's scan", minor_changes: "Minor changes since shipping", significant_changes: "Significant changes since shipping" };
+
+function deltaRow(label, before, after, fmt, lowerIsWorse) {
+  const worse = before !== null && after !== null && (lowerIsWorse ? after < before : Math.abs(after - before) >= 4);
+  const show = (v) => (v === null ? "–" : fmt(v));
+  return el("tr", {}, el("td", {}, label), el("td", {}, show(before)), el("td", worse ? { class: "worse" } : {}, show(after)));
+}
+
+const TRACKING = { "sam-3.1-video": "Tracked by SAM 3.1", "local-keyframe": "Keyframe only" };
+
+function renderProof(s) {
+  const v = s.video;
+  $("proof").hidden = !v;
+  $("videoTab").hidden = !v;
+  document.querySelector('[data-view="overlay"]').textContent = v ? "Leaf gallery" : "Leaves";
+  document.querySelector('[data-view="image"]').textContent = v ? "Frame" : "Original";
+  $("resultVideo").removeAttribute("src");
+  if (!v) return;
+  $("proofLeaves").replaceChildren(`${v.leaves_tracked}`, el("small", {}, v.leaves_tracked === 1 ? "leaf" : "leaves"));
+  $("proofTracking").textContent = TRACKING[v.tracking] || v.tracking;
+  $("proofMeta").textContent = `Recorded video · ${v.duration_s.toFixed(1)} s · ${v.frames_analyzed} frames analysed · SHA-256 ${v.sha256.slice(0, 12)}…`;
+}
+
+function renderArrival(s) {
+  const a = s.arrival;
+  $("arrivalResult").hidden = !a;
+  $("arrivalUpload").hidden = !!a;
+  if (!a) return;
+  $("verdict").textContent = VERDICTS[a.verdict];
+  $("verdict").className = `verdict ${a.verdict}`;
+  $("arrivalMeta").textContent = `Compared with seller scan ${a.baseline_id.slice(0, 8)} · ${a.days_in_transit.toFixed(1)} days in transit`;
+  $("beforeImg").src = `/v1/scans/${a.baseline_id}/overlay.jpg`;
+  $("afterImg").src = `/v1/scans/${s.id}/overlay.jpg`;
+  const pct = (v) => `${v.toFixed(1)}%`;
+  $("deltaTable").replaceChildren(
+    el("tr", {}, el("th", {}, ""), el("th", {}, "Before"), el("th", {}, "On arrival")),
+    deltaRow("Leaves", a.leaf_count_before, a.leaf_count_after, String, true),
+    deltaRow("Variegation", a.variegation_before, a.variegation_after, pct, false),
+    deltaRow("Health", a.health_before, a.health_after, String, true));
+  $("visualSummary").textContent = a.visual ? a.visual.summary : "";
+  $("visualSummary").hidden = !a.visual;
+  $("findings").replaceChildren(...a.findings.map((f) => el("li", {}, f)));
+}
+
+const LANGS = { en: "English", id: "Bahasa Indonesia", ja: "日本語", ko: "한국어", zh: "中文", th: "ไทย", de: "Deutsch", nl: "Nederlands", fr: "Français", es: "Español" };
+const COUNTRIES = { US: "United States", CA: "Canada", GB: "United Kingdom", DE: "Germany", NL: "Netherlands", FR: "France", ES: "Spain", JP: "Japan", KR: "South Korea", TW: "Taiwan", SG: "Singapore", MY: "Malaysia", TH: "Thailand", AU: "Australia", AE: "United Arab Emirates", ID: "Indonesia" };
+const CARE_LABELS = { summary: "Summary", light: "Light", watering: "Watering", humidity: "Humidity", temperature: "Temperature", substrate: "Substrate", feeding: "Feeding", after_arrival: "After arrival" };
+
+$("careLang").replaceChildren(...Object.entries(LANGS).map(([v, t]) => el("option", { value: v }, t)));
+$("careCountry").replaceChildren(...Object.entries(COUNTRIES).map(([v, t]) => el("option", { value: v }, t)));
+const browserLang = (navigator.language || "en").slice(0, 2);
+if (LANGS[browserLang]) $("careLang").value = browserLang;
+
+$("careBtn").addEventListener("click", async () => {
+  $("careError").hidden = true;
+  $("careBtn").disabled = true;
+  $("careBtn").textContent = "Writing…";
+  try {
+    const params = new URLSearchParams({ lang: $("careLang").value, country: $("careCountry").value });
+    const res = await fetch(`/v1/scans/${scan.id}/care-guide?${params}`);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || `Care guide failed (${res.status})`);
+    $("care").replaceChildren(
+      ...Object.entries(CARE_LABELS).flatMap(([k, label]) => [el("dt", {}, label), el("dd", {}, body[k])]),
+      ...(body.watch_for.length ? [el("dt", {}, "Watch for"), el("dd", {}, el("ul", {}, ...body.watch_for.map((w) => el("li", {}, w))))] : []));
+    $("care").hidden = false;
+  } catch (err) {
+    $("careError").textContent = err.message;
+    $("careError").hidden = false;
+  } finally {
+    $("careBtn").disabled = false;
+    $("careBtn").textContent = "Get guide";
+  }
+});
+
+$("copy").addEventListener("click", async () => {
+  const url = new URL(`/v1/scans/${scan.id}/card`, location.origin).href;
+  try {
+    await navigator.clipboard.writeText(url);
+    $("copy").textContent = "Copied";
+  } catch {
+    prompt("Copy this link", url);
+  }
+  setTimeout(() => ($("copy").textContent = "Copy link"), 1600);
+});
+
+$("again").addEventListener("click", () => {
+  $("result").hidden = true;
+  $("upload").hidden = false;
+  $("preview").hidden = true;
+  $("previewVideo").hidden = true;
+  $("previewVideo").removeAttribute("src");
+  $("dropEmpty").hidden = false;
+  $("file").value = "";
+  $("scan").disabled = true;
+  photo = null;
+  history.replaceState(null, "", location.pathname);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// Reopen a previous result from a shared ?scan=<id> link.
+const sharedId = new URLSearchParams(location.search).get("scan");
+if (sharedId && /^[0-9a-f]{32}$/.test(sharedId)) {
+  fetch(`/v1/scans/${sharedId}`)
+    .then((res) => (res.ok ? res.json() : Promise.reject()))
+    .then((s) => { scan = s; $("upload").hidden = true; render(s); })
+    .catch(() => history.replaceState(null, "", location.pathname));
+}
+</script>
+</body>
+</html>
